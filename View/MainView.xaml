@@ -1,0 +1,162 @@
+<Window x:Class="TCPAnalyzer.View.MainView"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:converters="clr-namespace:TCPAnalyzer.View.Converters"
+        xmlns:oxy="http://oxyplot.org/wpf"
+        xmlns:vm="clr-namespace:TCPAnalyzer.ViewModel"
+        mc:Ignorable="d"
+        d:DataContext="{d:DesignInstance Type=vm:MainViewModel}"
+        Title="TCPAnalyzer" Height="600" Width="1400">
+
+    <Window.Resources>
+        <converters:NullOrEmptyToCollapsedConverter x:Key="NullOrEmptyToCollapsedConverter"/>
+        <BooleanToVisibilityConverter x:Key="BoolToVisibility"/>
+    </Window.Resources>
+
+    <Grid Margin="10">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+
+        <!-- Row 0: status message -->
+        <TextBlock Grid.Row="0" Grid.ColumnSpan="2"
+                   Text="{Binding StatusMessage}"
+                   Foreground="OrangeRed"
+                   Margin="0 0 0 6"
+                   Visibility="{Binding StatusMessage, Converter={StaticResource NullOrEmptyToCollapsedConverter}}"/>
+
+        <!-- Row 1: toolbar -->
+        <StackPanel Grid.Row="1" Grid.ColumnSpan="2"
+                    Orientation="Horizontal" Margin="0 0 0 10">
+            <Button Content="Load File" Command="{Binding LoadCommand}" Width="100"/>
+            <TextBlock Text="{Binding LoadedFileName}"
+                       VerticalAlignment="Center"
+                       Margin="20 0 0 0"
+                       FontStyle="Italic"
+                       Foreground="Gray"/>
+
+            <TextBlock Text="Outlier threshold:" Margin="20 0 5 0" VerticalAlignment="Center"/>
+            <ComboBox ItemsSource="{Binding SigmaOptions}"
+                      SelectedItem="{Binding ThresholdMode}"
+                      Width="100"/>
+
+            <TextBox Width="80" Margin="10 0 0 0"
+                     IsReadOnly="{Binding IsNotCustomMode}"
+                     Text="{Binding CustomThreshold, StringFormat=F4, UpdateSourceTrigger=PropertyChanged,
+                           ValidatesOnNotifyDataErrors=True}"/>
+
+            <Button Content="{Binding ChartButtonLabel}" Command="{Binding ShowChartCommand}" Width="100" Margin="10 0 0 0"/>
+        </StackPanel>
+
+        <!-- Row 2, Col 0: data table -->
+        <DataGrid Grid.Row="2" Grid.Column="0"
+                  Margin="0 0 5 0"
+                  ItemsSource="{Binding Measurements}"
+                  AutoGenerateColumns="False"
+                  IsReadOnly="True"
+                  CanUserSortColumns="True"
+                  GridLinesVisibility="Horizontal"
+                  HeadersVisibility="Column">
+
+            <DataGrid.RowStyle>
+                <Style TargetType="DataGridRow">
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding IsOutlier}" Value="True">
+                            <Setter Property="Background" Value="#FFDDDD"/>
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </DataGrid.RowStyle>
+
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="#"
+                                    Binding="{Binding Id}"
+                                    Width="50"/>
+                <DataGridTextColumn Header="X (mm)"
+                                    Binding="{Binding X, StringFormat=F4}"
+                                    Width="*"/>
+                <DataGridTextColumn Header="Y (mm)"
+                                    Binding="{Binding Y, StringFormat=F4}"
+                                    Width="*"/>
+                <DataGridTextColumn Header="Z (mm)"
+                                    Binding="{Binding Z, StringFormat=F4}"
+                                    Width="*"/>
+                <DataGridTextColumn Header="PE (mm)"
+                                    Binding="{Binding PositionalError, StringFormat=F4}"
+                                    Width="*"/>
+                <DataGridCheckBoxColumn Header="Outlier"
+                                        Binding="{Binding IsOutlier, Mode=OneWay}"
+                                        Width="70"/>
+            </DataGrid.Columns>
+        </DataGrid>
+
+        <!-- Row 2, Col 1: chart -->
+        <Grid Grid.Row="2" Grid.Column="1" Margin="5 0 0 0">
+            <TextBlock Text="Load a file and click Show Chart"
+                       HorizontalAlignment="Center"
+                       VerticalAlignment="Center"
+                       FontStyle="Italic"
+                       Foreground="Gray">
+                <TextBlock.Style>
+                    <Style TargetType="TextBlock">
+                        <Setter Property="Visibility" Value="Visible"/>
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding HasChart}" Value="True">
+                                <Setter Property="Visibility" Value="Collapsed"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </TextBlock.Style>
+            </TextBlock>
+
+            <oxy:PlotView Model="{Binding Chart.PlotModel}"
+                          Visibility="{Binding HasChart, Converter={StaticResource BoolToVisibility}}"/>
+        </Grid>
+
+        <!-- Row 3, Col 0: statistics panel -->
+        <Grid Grid.Row="3" Grid.Column="0" Margin="0 10 5 0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <StackPanel Grid.Column="0">
+                <TextBlock Text="Positional Error" FontWeight="Bold"/>
+                <TextBlock Text="{Binding Stats.MeanPE, StringFormat='Mean: {0:F4} mm'}"/>
+                <TextBlock Text="{Binding Stats.MinPE, StringFormat='Min: {0:F4} mm'}"/>
+                <TextBlock Text="{Binding Stats.MaxPE, StringFormat='Max: {0:F4} mm'}"/>
+                <TextBlock Text="{Binding Stats.PERange, StringFormat='PE Range: {0:F4} mm'}"/>
+            </StackPanel>
+
+            <StackPanel Grid.Column="1">
+                <TextBlock Text="X Axis" FontWeight="Bold"/>
+                <TextBlock Text="{Binding Stats.MeanX, StringFormat='Mean: {0:F4} mm'}"/>
+                <TextBlock Text="{Binding Stats.StdDevX, StringFormat='Std Dev: {0:F4} mm'}"/>
+            </StackPanel>
+
+            <StackPanel Grid.Column="2">
+                <TextBlock Text="Y Axis" FontWeight="Bold"/>
+                <TextBlock Text="{Binding Stats.MeanY, StringFormat='Mean: {0:F4} mm'}"/>
+                <TextBlock Text="{Binding Stats.StdDevY, StringFormat='Std Dev: {0:F4} mm'}"/>
+            </StackPanel>
+
+            <StackPanel Grid.Column="3">
+                <TextBlock Text="Z Axis" FontWeight="Bold"/>
+                <TextBlock Text="{Binding Stats.MeanZ, StringFormat='Mean: {0:F4} mm'}"/>
+                <TextBlock Text="{Binding Stats.StdDevZ, StringFormat='Std Dev: {0:F4} mm'}"/>
+            </StackPanel>
+        </Grid>
+
+    </Grid>
+</Window>
